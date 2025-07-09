@@ -2,7 +2,7 @@
 import {ref} from "vue";
 import UserIcon from "@/components/icon/UserIcon.vue";
 import KeyIcon from "@/components/icon/KeyIcon.vue";
-import service from "@/utils/request.js";
+import {post} from "@/utils/request.js";
 import {useUserStore} from "@/stores/user.js";
 import {ElMessage} from "element-plus";
 import {useRouter} from "vue-router";
@@ -60,12 +60,12 @@ function login(loginForm) {
   }
   loginForm.validate(async (valid) => {
     if(valid) {
-      service.post("/user/login",{
+      post("/user/login",{
         username:form_user.value.username.trim(),
         password:form_user.value.password.trim(),
       }).then((res) => {
         if (res.code === 200) {
-          userStore.user = res.data.user;
+          userStore.user = res.data;
           const urlParams = new URLSearchParams(window.location.search);
           const url = urlParams.get('redirectTo');
           if (url) {
@@ -77,7 +77,7 @@ function login(loginForm) {
               path: '/'
             });
           }
-        }else if(res.code === 403){
+        }else if (userStore.user.username.toString().trim() !== ''){
           userStore.clearUserInfo();
         }
       })

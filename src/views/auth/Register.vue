@@ -2,7 +2,7 @@
 import UserIcon from "@/components/icon/UserIcon.vue";
 import KeyIcon from "@/components/icon/KeyIcon.vue";
 import {ref} from "vue";
-import service from "@/utils/request.js";
+import {post} from "@/utils/request.js";
 import {ElMessage} from "element-plus";
 import router from "@/router/index.js";
 
@@ -49,7 +49,7 @@ const form_rule = ref({
   ],
   confirm_password:[
     {
-      validator: (rule, value, callback) => {
+      validator: (_, value, callback) => {
         if(value.trim()!==form_user.value.password.trim()){
           callback(new Error('两次密码输入不一致'))
         }else {
@@ -59,7 +59,6 @@ const form_rule = ref({
       trigger: "blur"
     }
   ]
-
 })
 function register(registerForm) {
   if(!registerForm){
@@ -71,16 +70,14 @@ function register(registerForm) {
   }
   registerForm.validate(async (valid) => {
     if(valid){
-      service.post("/user/reg", {
+      post("/user/reg", {
         username: form_user.value.username.trim(),
         password: form_user.value.password.trim(),
       }).then((res) => {
         if (res.code === 200) {
-          ElMessage({
-            message: "注册成功,将跳转至登陆页面",
-            type: "success",
-          })
           router.push("/auth/login");
+        } else if(res.code === 402){
+          registerForm.username.error = "用户名已存在";
         }
       })
     }else{

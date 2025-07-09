@@ -4,7 +4,7 @@ import router from '@/router/index.js';
 
 // 创建axios实例
 const service = axios.create({
-    baseURL: "/",
+    baseURL: "http://localhost:8080",
     timeout: 5000, // 请求超时时间
     withCredentials: true // 允许携带cookie
 })
@@ -15,8 +15,6 @@ service.interceptors.request.use(
         return config
     },
     error => {
-        // 对请求错误做些什么
-        console.log(error) // for debug
         return Promise.reject(error)
     }
 )
@@ -25,35 +23,48 @@ service.interceptors.request.use(
 service.interceptors.response.use(
     response => {
         const res = response.data
-        // 如果自定义状态码不是200，则判断为错误
-        if (res.code && res.code !== 200) {
-            ElMessage({
-                message: res.msg || 'Error',
-                type: 'error',
-                duration: 3 * 1000
-            })
-        } else {
-            return res
+        if(res.code){
+            switch (res.code) {
+                case 200:
+                    ElMessage({
+                        message: res.msg || 'Success',
+                        type: 'success'
+                    })
+                    return res;
+                case 401:
+                    ElMessage({
+                        message: res.msg || '用户权限不足',
+                        type: 'error',
+                    })
+                    return res;
+                case 402:
+                    ElMessage({
+                        message: res.msg || '数据不合法',
+                        type: 'error',
+                    })
+                    return res;
+                case 403:
+                    ElMessage({
+                        message: res.msg || '请登陆',
+                        type: 'error',
+                    });
+                    router.push({
+                        path: '/auth/login',
+                        query: {
+                            redirectTo: router.currentRoute.value.path
+                        }
+                    })
+                    break;
+                default :
+                    ElMessage({
+                        message: res.msg || '未知错误',
+                        type: 'error',
+                    });
+                    return res;
+            }
         }
     },
     error => {
-        console.log('err' + error);
-        if(error.response?.data?.data?.uri) {
-            console.log("权限问题，要求重定向");
-            router.push({
-                path: error.response.data.data.uri,
-                query: {
-                    redirectTo: router.currentRoute.value.path
-                }
-            })
-        }
-        if(error.response?.data?.msg){
-            ElMessage({
-                message: error.response.data.msg,
-                type: 'error',
-                duration: 3 * 1000
-            })
-        }
         return Promise.reject(error);
     }
 )

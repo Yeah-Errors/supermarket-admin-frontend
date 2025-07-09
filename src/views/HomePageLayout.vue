@@ -1,6 +1,6 @@
 <script setup>
 import { useUserStore } from "@/stores/user.js";
-import service, {get, put,del} from "@/utils/request.js";
+import {get, put, del, post} from "@/utils/request.js";
 import {ref,onMounted,computed} from "vue";
 import {ArrowDown, Location, Plus, User} from "@element-plus/icons-vue";
 import {useRoute} from "vue-router";
@@ -8,7 +8,7 @@ import configs from "@/config/page.config.js"
 import SearchBar from "@/components/SearchBar.vue";
 import TableComponents from "@/components/TableComponents.vue";
 import router from "@/router/index.js";
-import {ElMessage, ElMessageBox} from "element-plus";
+import {ElMessage, ElMessageBox, ElNotification} from "element-plus";
 import {formatDateTime} from "@/utils/util.js";
 
 const userStore = useUserStore();
@@ -29,7 +29,7 @@ const dialogShowId = ref(true);
 const dialogTitle = ref("");
 
 function logout() {
-  service.post("/user/logout").then(res => {
+  post("/user/logout").then(res => {
     if (res.code===200) {
       userStore.clearUserInfo();
       router.push("/auth");
@@ -53,14 +53,30 @@ const list = () => {
   // 验证是否为有效非负整数
   index.value['page'] = page.value;
   get(baseUri.value+"/list", index.value).then((res) => {
-    tableData.value = res.data.result.records;
-    total.value =res.data.result.total;
+    if(res.code===200){
+      tableData.value = res.data.records;
+      total.value =res.data.total;
+    }else{
+      if(res.code===402){
+        for (let key in res.data) {
+          if (res.data.hasOwnProperty(key)) {
+            console.log( key)
+            ElNotification({
+              title: '错误',
+              message: res.data[key],
+              type: 'error',
+              duration: 3000
+            });
+          }
+        }
+        index.value = {};
+      }
+    }
   });
 }
 const getEleById = (id) => {
   get(baseUri.value+"/"+id).then((res) => {
-    dialogContent.value = res.data.result;
-    console.log(dialogContent.value);
+    dialogContent.value = res.data;
   })
 }
 
@@ -91,14 +107,7 @@ const deleteEle = (id) => {
   ).then(() => {
     del(baseUri.value+`/${id}/del`).then((res) => {
       if (res.code===200) {
-        ElMessage.success({
-          message:"删除成功"
-        })
         list();
-      }else {
-        ElMessage.error({
-          message:"删除失败"
-        })
       }
     });
   }).catch((err) => {
@@ -118,24 +127,22 @@ const add = () => {
   };
 }
 const submit = () => {
-  dialogVisible.value = false;
   if(dialogContent.value.id){
     put(`${baseUri.value}/${dialogContent.value.id}/update`, dialogContent.value).then((res) => {
       if (res.code===200){
         list();
-        ElMessage.success("修改成功！^_^")
+        dialogVisible.value = false;
       }else {
-        ElMessage.error("修改失败，请稍后重试@_@")
+        console.log("res:",res);
       }
     });
   }else{
     put(`${baseUri.value}/add`, dialogContent.value).then((res) => {
       if (res.code===200){
         list();
-        ElMessage.success("添加成功！^_^")
         dialogContent.value= {};
-      }else {
-        ElMessage.error("添加失败，请稍后重试@_@")
+      }else{
+        console.log("res:",res);
       }
     });
   }
